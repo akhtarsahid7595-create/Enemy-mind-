@@ -93,7 +93,7 @@ export default function Panic() {
       isPreFetchingRef.current = true;
       try {
         const text = getPhaseText(nextPhase);
-        const base64 = await generateSpeech(text, 'calm');
+        const base64 = await generateSpeech(text, 'meditation');
         nextAudioRef.current = base64 || null;
       } catch (e) {
         console.error("Pre-fetch error", e);
@@ -113,7 +113,7 @@ export default function Panic() {
         setIsVoiceLoading(true);
         try {
           const text = getPhaseText(breathePhase);
-          const base64 = await generateSpeech(text, 'calm');
+          const base64 = await generateSpeech(text, 'meditation');
           if (base64) await playRawAudio(base64);
         } catch (e) {
           console.error("Breathe speech error", e);

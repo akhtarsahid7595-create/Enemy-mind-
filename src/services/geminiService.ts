@@ -170,10 +170,14 @@ export async function getWeeklyInsights(statsSummary: string) {
   return insights;
 }
 
-export async function generateSpeech(text: string, style: 'firm' | 'calm' = 'firm') {
-  const prompt = style === 'calm' 
+export async function generateSpeech(text: string, style: 'firm' | 'calm' | 'meditation' = 'firm') {
+  const prompt = style === 'meditation'
+    ? `Speak this extremely slowly, in a deep, highly meditative, resonant male voice with long pauses for breathing. Be very soothing and calm: ${text}`
+    : style === 'calm' 
     ? `Speak this very slowly, calmly, and meditatively. Use a deep, soothing tone with long pauses: ${text}`
     : `Speak this firmly and clearly: ${text}`;
+
+  const voice = style === 'meditation' ? 'Charon' : style === 'calm' ? 'Zephyr' : 'Charon';
 
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-preview-tts",
@@ -182,7 +186,7 @@ export async function generateSpeech(text: string, style: 'firm' | 'calm' = 'fir
       responseModalities: [Modality.AUDIO],
       speechConfig: {
         voiceConfig: {
-          prebuiltVoiceConfig: { voiceName: style === 'calm' ? 'Zephyr' : 'Charon' },
+          prebuiltVoiceConfig: { voiceName: voice },
         },
       },
     },
