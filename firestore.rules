@@ -1,0 +1,148 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId
+    // Fields:
+    //   - uid: string (required) - User's unique ID.
+    //   - email: string (required) - User's email.
+    //   - displayName: string (optional) - User's display name.
+    //   - timezone: string (optional) - User's timezone.
+    //   - linkedWarUserId: string (optional) - Optional link to War Day Planner user ID.
+    //   - createdAt: timestamp (required) - Creation timestamp.
+    //
+    // Collection: enemyMoves
+    // Document ID: auto-generated
+    // Fields:
+    //   - userId: string (required) - User ID.
+    //   - date: string (required) - Date of the move.
+    //   - time: string (required) - Time of the move.
+    //   - type: string (required, enum) - thought | urge | action.
+    //   - description: string (required) - Description of what happened.
+    //   - trigger: string (required) - Trigger category.
+    //   - impact: number (required, 1-5) - Impact level.
+    //   - relatedArea: string (optional) - Related War Day Planner area.
+    //   - usedCounter: bool (optional) - Whether a counter-move was applied.
+    //   - counterTalk: string (optional) - AI-generated self-talk line.
+    //   - counterAction: string (optional) - AI-generated action line.
+    //   - createdAt: timestamp (required) - Creation timestamp.
+    //
+    // Collection: scripts
+    // Document ID: auto-generated
+    // Fields:
+    //   - userId: string (required) - User ID.
+    //   - title: string (required) - Script title.
+    //   - trigger: string (required) - Trigger category.
+    //   - selfTalk: string (required) - Self-talk line.
+    //   - action: string (required) - Action line.
+    //   - pinned: bool (optional) - Whether the script is pinned.
+    //   - createdAt: timestamp (required) - Creation timestamp.
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "sahidakhtar6543@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'email', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             isValidEmail(data.email) &&
+             isValidTimestamp(data.createdAt) &&
+             (data.displayName is string || !('displayName' in data)) &&
+             (data.timezone is string || !('timezone' in data)) &&
+             (data.linkedWarUserId is string || !('linkedWarUserId' in data)) &&
+             (data.role == 'user' || !('role' in data) || isAdmin());
+    }
+
+    function isValidEnemyMove(data) {
+      return hasRequiredFields(['userId', 'type', 'description', 'trigger', 'impact', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.type in ['thought', 'urge', 'action'] &&
+             data.description is string && data.description.size() < 2000 &&
+             data.trigger is string && data.trigger.size() < 100 &&
+             data.impact is number && data.impact >= 1 && data.impact <= 5 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidScript(data) {
+      return hasRequiredFields(['userId', 'title', 'trigger', 'selfTalk', 'action', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.title is string && data.title.size() < 200 &&
+             data.trigger is string && data.trigger.size() < 100 &&
+             data.selfTalk is string && data.selfTalk.size() < 1000 &&
+             data.action is string && data.action.size() < 1000 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    // ===============================================================
+    // Match Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) &&
+                      request.resource.data.createdAt == resource.data.createdAt &&
+                      (request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    match /enemyMoves/{moveId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidEnemyMove(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidEnemyMove(request.resource.data) &&
+                      request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+
+    match /scripts/{scriptId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidScript(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidScript(request.resource.data) &&
+                      request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+  }
+}

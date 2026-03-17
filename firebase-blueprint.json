@@ -1,0 +1,69 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User settings and preferences.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "User's unique ID." },
+        "email": { "type": "string", "description": "User's email." },
+        "displayName": { "type": "string", "description": "User's display name." },
+        "timezone": { "type": "string", "description": "User's timezone." },
+        "linkedWarUserId": { "type": "string", "description": "Optional link to War Day Planner user ID." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp." }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "EnemyMove": {
+      "title": "Enemy Move",
+      "description": "A thought, urge, or action that pulled the user away from their plan.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID." },
+        "userId": { "type": "string", "description": "User ID." },
+        "date": { "type": "string", "description": "Date of the move." },
+        "time": { "type": "string", "description": "Time of the move." },
+        "type": { "type": "string", "enum": ["thought", "urge", "action"], "description": "Type of move." },
+        "description": { "type": "string", "description": "Description of what happened." },
+        "trigger": { "type": "string", "description": "Trigger category." },
+        "impact": { "type": "integer", "description": "Impact level (1-5)." },
+        "relatedArea": { "type": "string", "description": "Related War Day Planner area." },
+        "usedCounter": { "type": "boolean", "description": "Whether a counter-move was applied." },
+        "counterTalk": { "type": "string", "description": "AI-generated self-talk line." },
+        "counterAction": { "type": "string", "description": "AI-generated action line." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp." }
+      },
+      "required": ["userId", "type", "description", "trigger", "impact", "createdAt"]
+    },
+    "Script": {
+      "title": "Script",
+      "description": "Saved counter-moves for repeated situations.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID." },
+        "userId": { "type": "string", "description": "User ID." },
+        "title": { "type": "string", "description": "Script title." },
+        "trigger": { "type": "string", "description": "Trigger category." },
+        "selfTalk": { "type": "string", "description": "Self-talk line." },
+        "action": { "type": "string", "description": "Action line." },
+        "pinned": { "type": "boolean", "description": "Whether the script is pinned." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp." }
+      },
+      "required": ["userId", "title", "trigger", "selfTalk", "action", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile document."
+    },
+    "/enemyMoves/{moveId}": {
+      "schema": "EnemyMove",
+      "description": "Enemy move log entries."
+    },
+    "/scripts/{scriptId}": {
+      "schema": "Script",
+      "description": "Saved scripts for the user."
+    }
+  }
+}
